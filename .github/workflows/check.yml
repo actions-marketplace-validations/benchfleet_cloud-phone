@@ -1,0 +1,50 @@
+# Checks the Action and its command-line tool without starting a cloud phone: no token, no BenchFleet account,
+# nothing billed. The tests run the tool against a fake service and the Action's script with a stand-in for Node.
+name: Check
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: action.yml has what the Marketplace needs
+        run: |
+          python3 - <<'EOF'
+          import yaml
+          a = yaml.safe_load(open("action.yml", encoding="utf-8"))
+          for key in ("name", "description", "author", "branding", "inputs", "runs"):
+              assert a.get(key), f"action.yml: {key} is missing"
+          assert a["branding"].get("icon") and a["branding"].get("color"), "action.yml: branding needs icon and color"
+          assert a["runs"]["using"] == "composite"
+          for name, spec in a["inputs"].items():
+              assert spec.get("description"), f"input {name} has no description"
+          print("action.yml looks good:", a["name"])
+          EOF
+
+      - name: The command-line tool starts
+        run: node cli/src/cli.ts --help
+
+      - name: Install the tools for the tests
+        working-directory: cli
+        run: npm ci --no-audit --no-fund
+
+      - name: Type check
+        working-directory: cli
+        run: npx tsc --noEmit
+
+      - name: Tests (a fake service; no cloud phone is started)
+        working-directory: cli
+        run: npx vitest run
