@@ -1,0 +1,91 @@
+# BenchFleet cloud phone: run an Android test on a BenchFleet cloud phone from GitHub Actions.
+# https://benchfleet.com/docs/cloud-phones-ci
+#
+# Starts a phone with an account API token, installs the APKs, runs the command in the phone's shell, fetches the
+# report files and logcat, and always stops the phone. The phone's minutes come from the BenchFleet account's prepaid
+# minutes (https://benchfleet.com/pricing); the account's spending limit and the token's caps apply as in the browser.
+# The command-line tool it runs is in cli/ beside this file.
+name: BenchFleet cloud phone
+description: Run an Android test on a BenchFleet cloud phone billed by the minute; the phone is always stopped.
+author: BenchFleet
+branding:
+  icon: smartphone
+  color: blue
+inputs:
+  token:
+    description: An account API token (bfc_…) from the account page, API tokens. Keep it in a repository secret.
+    required: true
+  command:
+    description: The test command, run in the phone's shell (one line), e.g. am instrument -w com.example.test/androidx.test.runner.AndroidJUnitRunner
+    required: true
+  apk:
+    description: APK files to install first, one per line (the app, then its test APK).
+    required: false
+    default: ''
+  android:
+    description: The Android version (17, 16, 15, 14, 13 or 12).
+    required: false
+    default: '17'
+  screen:
+    description: The screen profile (phone, small, large, tablet, foldable).
+    required: false
+    default: ''
+  root:
+    description: Root access in the phone (true or false).
+    required: false
+    default: 'false'
+  minutes:
+    description: The most minutes the phone may run (a started phone is charged a minimum; see benchfleet.com/pricing).
+    required: false
+    default: '30'
+  timeout-minutes:
+    description: The most minutes the test command may take (at most 120).
+    required: false
+    default: '30'
+  pull:
+    description: Files to fetch from the phone afterwards, one per line (from /sdcard/Download and the other shared folders).
+    required: false
+    default: ''
+  out:
+    description: The folder for the fetched files.
+    required: false
+    default: benchfleet-results
+  logcat:
+    description: A file to write the phone's log to while the test runs (empty for none).
+    required: false
+    default: ''
+  url:
+    description: The service (leave as it is).
+    required: false
+    default: https://benchfleet.com
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 24
+    - name: Test on a cloud phone
+      shell: bash
+      # Inputs reach the script as variables, never pasted into it.
+      env:
+        BENCHFLEET_TOKEN: ${{ inputs.token }}
+        BENCHFLEET_URL: ${{ inputs.url }}
+        BF_COMMAND: ${{ inputs.command }}
+        BF_APK: ${{ inputs.apk }}
+        BF_ANDROID: ${{ inputs.android }}
+        BF_SCREEN: ${{ inputs.screen }}
+        BF_ROOT: ${{ inputs.root }}
+        BF_MINUTES: ${{ inputs.minutes }}
+        BF_TIMEOUT: ${{ inputs.timeout-minutes }}
+        BF_PULL: ${{ inputs.pull }}
+        BF_OUT: ${{ inputs.out }}
+        BF_LOGCAT: ${{ inputs.logcat }}
+      run: |
+        cli="$GITHUB_ACTION_PATH/cli/src/cli.ts"
+        args=(test --command "$BF_COMMAND" --android "$BF_ANDROID" --minutes "$BF_MINUTES" --timeout-min "$BF_TIMEOUT" --out "$BF_OUT")
+        while IFS= read -r f; do [ -n "$f" ] && args+=(--apk "$f"); done <<< "$BF_APK"
+        while IFS= read -r f; do [ -n "$f" ] && args+=(--pull "$f"); done <<< "$BF_PULL"
+        [ -n "$BF_SCREEN" ] && args+=(--screen "$BF_SCREEN")
+        [ "$BF_ROOT" = "true" ] && args+=(--root)
+        [ -n "$BF_LOGCAT" ] && args+=(--logcat "$BF_LOGCAT")
+        node "$cli" "${args[@]}"

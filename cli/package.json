@@ -1,0 +1,55 @@
+{
+  "name": "benchfleet-cloud",
+  "version": "0.1.0",
+  "description": "Run Android tests on BenchFleet cloud phones from CI or a terminal: start a phone billed by the minute, install your APK, run the test, fetch reports and logcat, and always stop the phone.",
+  "keywords": [
+    "android",
+    "cloud-phone",
+    "android-testing",
+    "instrumentation-tests",
+    "ci",
+    "github-actions",
+    "device-farm",
+    "virtual-device",
+    "apk",
+    "logcat",
+    "benchfleet"
+  ],
+  "homepage": "https://benchfleet.com/docs/cloud-phones-ci",
+  "bugs": {
+    "url": "https://benchfleet.com/support"
+  },
+  "author": "WOODCOMMERCE LTD <support@benchfleet.com>",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "benchfleet-cloud": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.0",
+    "@types/ws": "8.18.1",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3",
+    "ws": "8.22.0"
+  }
+}
